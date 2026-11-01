@@ -109,7 +109,11 @@ def submit():
 
     text = payload.get("text", "")
     creator_id = payload.get("creator_id", "unknown")
-
+    if not isinstance(text, str) or not text.strip():
+      return jsonify({
+        "error": "invalid_text",
+        "message": "Text is required and cannot be empty.",
+    }), 400
     content_id = str(uuid.uuid4())
 
     model_score = detector.model_signal(text)
