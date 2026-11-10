@@ -504,7 +504,13 @@ This indicates that the detector was not consistently confident when evaluating 
 
 However, the required comparison concerns mean scores rather than classification counts.
 
-**Verdict:** Numerical score separation still requires verification.
+**Results:**
+- Average AI writing score: 0.6183
+- Average synthetic human-style writing score: 0.6879
+- Score difference (AI minus comparison): -0.0696
+- Required difference: +0.20
+
+**Verdict: FAILED.** The AI writing average was lower than the comparison average. These comparison samples were AI-generated human-style writing, not verified human-authored text.
 
 ### Criterion 3 — Label Coverage
 
