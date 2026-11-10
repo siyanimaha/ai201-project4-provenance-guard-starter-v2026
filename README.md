@@ -886,3 +886,231 @@ GitHub:
 https://github.com/siyanimaha/ai201-project4-provenance-guard-starter-v2026
 
 **How to run the project:** [RUNNING.md](RUNNING.md)
+
+<!-- UNIT8_RUBRIC_ADDENDUM_START -->
+## Unit 8 — Rubric Evidence Addendum
+
+This section is generated from actual local test reports.
+The original README sections remain above.
+
+### Attack results: before and after
+
+Both reports contain 56 attacks. `REVIEW` means the HTTP status or classification alone cannot prove whether the attack achieved its intended effect.
+
+| ID | Target | Before status | Before guess | Before verdict | After status | After guess | After verdict |
+|---|---|---|---|---|---|---|---|
+| EV01 | signal two: typos raise word variety | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV02 | signal two: broken-up sentences raise length spread | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV03 | signal two: a pasted quotation changes the shape | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV04 | signal one: unusual words raise perplexity | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV05 | both signals: heavy human editing pass | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV06 | signal two: one very long sentence and one very short | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV07 | signal two: padding with punctuation | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV08 | signal one: text below the token window | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV09 | both: AI text with a human opening paragraph bolted on | 200 | unsure | BROKE | 200 | unsure | BROKE |
+| EV10 | signal two: repeated stanza structure | 200 | ai | HELD | 200 | ai | HELD |
+| FP01 | plain, clear human writing with no flourishes | 200 | unsure | HELD | 200 | unsure | HELD |
+| FP02 | human writing in a formal register | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP03 | a non-native English speaker writing carefully | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP04 | a student essay written to a rubric | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP05 | technical documentation written by a person | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP06 | a person imitating a formal template | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP07 | human writing that repeats a phrase deliberately | 200 | ai | BROKE | 200 | ai | BROKE |
+| FP08 | very short genuine human submission | 200 | human | HELD | 200 | human | HELD |
+| PI01 | instruction to ignore the check | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| PI02 | instruction disguised as a system message | 200 | human | REVIEW | 200 | human | REVIEW |
+| PI03 | instruction wrapped in the writer's voice | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| PI04 | attempt to make the label text hostile | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| PI05 | attempt to inject into the audit log | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| PI06 | instruction plus real human text | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| MF01 | text is only whitespace | 400 | — | HELD | 400 | — | HELD |
+| MF02 | text is a single character | 500 | — | BROKE | 400 | — | HELD |
+| MF03 | text is control characters | 200 | human | REVIEW | 200 | human | REVIEW |
+| MF04 | text is only punctuation | 200 | human | REVIEW | 200 | human | REVIEW |
+| MF05 | text is a very long single word | 200 | ai | REVIEW | 200 | ai | REVIEW |
+| MF06 | text is emoji only | 200 | ai | REVIEW | 200 | ai | REVIEW |
+| MF07 | text is right-to-left script | 200 | ai | REVIEW | 200 | ai | REVIEW |
+| MF08 | text is 60,000 characters | 200 | ai | REVIEW | 200 | ai | REVIEW |
+| RQ01 | no text field at all | 400 | — | HELD | 400 | — | HELD |
+| RQ02 | no creator_id | 200 | unsure | REVIEW | 200 | unsure | REVIEW |
+| RQ03 | text is a number | 400 | — | HELD | 400 | — | HELD |
+| RQ04 | text is a list | 400 | — | HELD | 400 | — | HELD |
+| RQ05 | text is null | 400 | — | HELD | 400 | — | HELD |
+| RQ06 | creator_id is an object | 200 | human | REVIEW | 400 | — | HELD |
+| RQ07 | body is a JSON array, not an object | 500 | — | BROKE | 400 | — | HELD |
+| RQ08 | body is unparseable JSON | 400 | — | HELD | 400 | — | HELD |
+| RQ09 | body is empty | 400 | — | HELD | 400 | — | HELD |
+| RQ10 | body is form-encoded, not JSON | 400 | — | HELD | 400 | — | HELD |
+| RQ11 | body is JSON claiming to be plain text | 400 | — | HELD | 400 | — | HELD |
+| RQ12 | deeply nested JSON | 400 | — | HELD | 400 | — | HELD |
+| FL01_01 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_02 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_03 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_04 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_05 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_06 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_07 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_08 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_09 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_10 | 20 rapid submissions from one creator | 200 | human | HELD | 200 | human | HELD |
+| FL01_11 | 20 rapid submissions from one creator | 429 | — | HELD | 429 | — | HELD |
+| FL01_12 | 20 rapid submissions from one creator | 429 | — | HELD | 429 | — | HELD |
+
+### Confirmed changes
+
+| Test | Before | After | Finding |
+|---|---|---|---|
+| MF02 | HTTP 500 | HTTP 400 | Single-character input no longer causes a server error |
+| RQ06 | HTTP 200 | HTTP 400 | Invalid creator ID type is rejected |
+| RQ07 | HTTP 500 | HTTP 400 | JSON array body is rejected without a server error |
+
+The request-validation changes improved reliability. They did not fix the false-positive or evasion results.
+
+### Ten audit records
+
+Nine complete decision records and one rejected request are reproduced directly from `logs/audit.jsonl`.
+
+```json
+[
+  {
+    "timestamp": "2026-11-01T22:43:34+00:00",
+    "content_id": "647266f0-3565-4d79-92a0-0605e8e39042",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.2115,
+    "style_score": null,
+    "combined_score": 0.2115,
+    "label": "Analysis not complete yet.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:14:52+00:00",
+    "content_id": "4c3204b0-1fff-4baf-9007-a67de64bbd82",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.6722,
+    "style_score": null,
+    "combined_score": 0.6722,
+    "label": "Analysis not complete yet.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:22:52+00:00",
+    "content_id": "bedf50b6-d131-4a1a-9cb3-ec033cd3df99",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.6722,
+    "style_score": null,
+    "combined_score": 0.6722,
+    "label": "Analysis not complete yet.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:25:30+00:00",
+    "content_id": "11cda6a9-82b4-42ee-9536-7d8f89339745",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.6722,
+    "style_score": 0.4904,
+    "combined_score": 0.5813,
+    "label": "Analysis not complete yet.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:33:25+00:00",
+    "content_id": "e7db2c2c-3b27-479b-ad20-b31bd4129a81",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.6722,
+    "style_score": 0.4904,
+    "combined_score": 0.5813,
+    "label": "We are not confident whether this writing was produced by a person or AI.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:36:42+00:00",
+    "content_id": "d10f8f8f-ae67-4583-bbb7-7887aabc59f3",
+    "creator_id": "siyani",
+    "guess": "unsure",
+    "model_score": 0.5289,
+    "style_score": 0.5356,
+    "combined_score": 0.5323,
+    "label": "We are not confident whether this writing was produced by a person or AI.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:37:01+00:00",
+    "content_id": "f108b432-fb2f-45a1-8dcd-d185fdddbdea",
+    "creator_id": "siyani",
+    "guess": "human",
+    "model_score": 0.2019,
+    "style_score": 0.3992,
+    "combined_score": 0.3005,
+    "label": "This writing shows patterns that are more consistent with human-written text.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-01T23:37:20+00:00",
+    "content_id": "8166762c-e5cf-44ae-9455-92650c79c413",
+    "creator_id": "siyani",
+    "guess": "ai",
+    "model_score": 0.8192,
+    "style_score": 0.6026,
+    "combined_score": 0.7109,
+    "label": "This writing shows patterns that are more consistent with AI-generated text, but this result is not proof of authorship.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-07T21:59:47+00:00",
+    "content_id": "2ec7c3a6-a5c5-4277-9dcd-a0c28136ba13",
+    "creator_id": "flood_tester",
+    "guess": "human",
+    "model_score": 0.2588,
+    "style_score": 0.3741,
+    "combined_score": 0.3165,
+    "label": "This writing shows patterns that are more consistent with human-written text.",
+    "status": "decided"
+  },
+  {
+    "timestamp": "2026-11-09T23:38:50+00:00",
+    "creator_id": "attacker_flood",
+    "event": "rejected",
+    "status": "rejected",
+    "reason": "rate_limited",
+    "limit": "10 per 1 minute"
+  }
+]
+```
+
+### Five acceptance criteria — three trials
+
+| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
+|---|---|---|---|---|---|
+| 1. Human false positives | At most 1/10 genuine human texts labeled AI | 10/10 synthetic human-style samples labeled AI | Same | Same | NOT VALIDATED on genuine human text |
+| 2. Score separation | AI mean at least 0.20 above human mean | AI 0.6183; synthetic comparison about 0.6879 | Same | Same | FAILED on synthetic comparison; genuine-human criterion unverified |
+| 3. Label coverage | Human, unsure, and AI all produced | AI and unsure | AI and unsure | AI and unsure | FAILED |
+| 4. Appeals | Five appeals accepted and logged | 5/5 API responses and 5/5 audit records verified in separate test | Not repeated | Not repeated | PASSED for separate test; three-run requirement not demonstrated |
+| 5. Bad inputs | No crash for missing, empty, or long text | 400, 400, 200 | 400, 400, 200 | 400, 400, 200 | PASSED |
+
+### Interpretation and limitations
+
+- Evasion probes returning `unsure` are marked BROKE under the stated assumption that the attack seeks to avoid an AI label.
+- False-positive probes receiving an AI label are marked BROKE based on their stated test intent, not independent verification of genuine human authorship.
+- Prompt-injection probes remain REVIEW until the returned label and audit data are compared with the actual injected instructions.
+- Accepted unusual malformed content remains REVIEW because acceptance alone does not prove a failure.
+- RQ02 remains REVIEW because the API permits an omitted creator ID; whether that is a failure depends on the API contract.
+- Nine-field decision records and rejected-request records may have different schemas. A rejected event does not necessarily contain all nine decision fields.
+- Criterion 2 did not meet its numerical target on the synthetic comparison. The original human-writing criterion requires genuinely human-authored examples.
+- Criterion 4 has five verified appeal events, but three independent runs of five appeals have not been demonstrated.
+
+### Rate limiting
+
+Configured limits: 10 requests per minute and 200 per day. The minute limit restricts rapid bursts; the daily limit restricts sustained repeated use. These limits may also delay legitimate high-volume users.
+
+The separate 15-request flood test returned ten HTTP 200 responses followed by five HTTP 429 responses.
+
+### Improvement cost
+
+Stricter validation rejects malformed requests earlier, which improves reliability but also rejects some inputs that the previous implementation accepted. It does not solve inaccurate classifications.
+
+<!-- UNIT8_RUBRIC_ADDENDUM_END -->
