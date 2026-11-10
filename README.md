@@ -936,7 +936,7 @@ Both reports contain 56 attacks. `REVIEW` means the HTTP status or classificatio
 | RQ03 | text is a number | 400 | — | HELD | 400 | — | HELD |
 | RQ04 | text is a list | 400 | — | HELD | 400 | — | HELD |
 | RQ05 | text is null | 400 | — | HELD | 400 | — | HELD |
-| RQ06 | creator_id is an object | 200 | human | REVIEW | 400 | — | HELD |
+| RQ06 | creator_id is an object | 200 | human | BROKE | 400 | — | HELD |
 | RQ07 | body is a JSON array, not an object | 500 | — | BROKE | 400 | — | HELD |
 | RQ08 | body is unparseable JSON | 400 | — | HELD | 400 | — | HELD |
 | RQ09 | body is empty | 400 | — | HELD | 400 | — | HELD |
@@ -1114,3 +1114,11 @@ The separate 15-request flood test returned ten HTTP 200 responses followed by f
 Stricter validation rejects malformed requests earlier, which improves reliability but also rejects some inputs that the previous implementation accepted. It does not solve inaccurate classifications.
 
 <!-- UNIT8_RUBRIC_ADDENDUM_END -->
+
+
+### Additional request-validation interpretation
+
+- **RQ02:** The API defaults a missing `creator_id` to `"unknown"`. HTTP 200 is consistent with the current implementation, although requiring explicit creator identification would be stricter.
+- **RQ06:** Before the fix, an object was accepted as `creator_id` (BROKE). After the fix, the API returns HTTP 400 (HELD).
+- **MF03–MF08:** These inputs did not crash the server. Whether they should be rejected is a separate input-policy decision.
+- **PI01–PI06:** The HTTP status and classification alone do not establish whether the injected instructions succeeded.
