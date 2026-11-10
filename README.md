@@ -855,7 +855,7 @@ The detector should support human review rather than serve as the final authorit
 - [x] Appeal endpoint implemented
 - [x] Combining rule documented
 - [x] Sample submission and appeal included
-- [ ] Verify required commit count
+- [x] Verify commit count (19 commits at time of check)
 
 ### Unit 8
 
@@ -872,9 +872,9 @@ The detector should support human review rather than serve as the final authorit
 - [x] RQ06 and RQ07 fixes verified
 - [x] Remaining limitations documented
 - [x] Production tradeoff explained
-- [ ] Verify all five appeal audit entries
-- [ ] Calculate mean-score separation
-- [ ] Verify required commit count
+- [x] Verify all five appeal audit entries
+- [x] Calculate mean-score separation (criterion failed)
+- [x] Verify commit count (19 commits at time of check)
 - [ ] Add full unabridged audit records if required
 
 ---
