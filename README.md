@@ -260,28 +260,59 @@ The current limiter uses in-memory storage. In a production environment, I would
 
 ## Attack Run — Before
 
-I tested the system using the provided attack suite.
+I ran the attack suite before improving request validation.
 
-The tests included:
+Source: `results/attack_run_2026-11-09_1809_before.md`
 
-- Evasion attacks
-- False-positive attacks
-- Prompt-injection attacks
-- Malformed content
-- Malformed requests
-- Flooding attacks
+The before-run revealed important weaknesses in request handling.
 
-The complete before-run attack report was not included in the available evidence, so I cannot claim exact before-run results or individual HELD/BROKE verdicts.
+### Before-Run Findings
 
-**Required evidence to insert here:**
+**RQ06 — Invalid creator ID**
 
-Paste the complete attack table from the saved `results/attack_run_*_before.md` report, including every attack ID, response, and manually assessed HELD/BROKE result.
+The request submitted a JSON object as the creator ID instead of a string.
 
-A successful HTTP response does not necessarily mean the attack was held.
+The application accepted the request and returned HTTP 200 with a human classification.
+
+**Verdict: BROKE**
+
+**RQ07 — JSON Array Request**
+
+The request sent a JSON array instead of a JSON object.
+
+The application returned HTTP 500 because it attempted to call `.get()` on a list.
+
+**Verdict: BROKE**
+
+This was the most serious failure because malformed input caused an unhandled server error.
+
+**RQ08–RQ12 — Invalid Requests**
+
+These requests returned HTTP 400.
+
+**Verdict: HELD**
+
+**Flooding Test**
+
+The first ten requests returned HTTP 200.
+
+Requests eleven and twelve returned HTTP 429.
+
+**Verdict: HELD**
+
+The rate limiter successfully blocked excessive submissions.
+
+### What Needed Improvement
+
+The main problem was insufficient input validation in the submission route.
+
+The application needed to verify that incoming JSON was an object and that the creator ID had the correct data type before processing the request.
+
+The complete attack-by-attack before-run output is saved in `results/attack_run_2026-11-09_1809_before.md`. The remaining individual attacks still need manual HELD/BROKE assessment.
 
 ### Ten Audit Log Entries
 
-The following are actual records selected from the audit extract. They include false positives, evasion, prompt injection, unusual content, and rate-limit rejection.
+The following nine entries were selected from the audit extract. They show false-positive classifications, evasion, prompt injection, unusual content, and rate-limit rejection.
 
 ```json
 [
@@ -376,11 +407,11 @@ The following are actual records selected from the audit extract. They include f
 ]
 ```
 
-These are nine distinct entries; one additional complete record should be pasted from `logs/audit.jsonl` to reach the required ten. The decision records above omit their longer reader-facing `label` fields for readability; the original audit file retains those fields.
+These are nine distinct entries. One additional complete record must be added from `logs/audit.jsonl` to meet the requirement of ten entries.
 
 ### The Single Worst Outcome
 
-The most concerning result was the false-positive behavior.
+The most concerning outcome was the false-positive behavior.
 
 Six of the eight false-positive attack inputs in the after-run were classified as AI.
 
@@ -569,15 +600,44 @@ The malformed-request and flooding attacks showed that the service needed strong
 
 These improvements address API reliability rather than authorship-detection accuracy.
 
+### Before and After Comparison
+
+I compared the results of two malformed-request attacks before and after improving input validation.
+
+| Attack | Before | After | Result |
+|---|---|---|---|
+| RQ06 — creator_id is an object | HTTP 200 | HTTP 400 | Fixed |
+| RQ07 — JSON array instead of object | HTTP 500 | HTTP 400 | Fixed |
+
+**RQ06:**
+
+Before the improvement, the application accepted a JSON object as the creator ID and returned HTTP 200.
+
+After the improvement, the application rejected the invalid creator ID with HTTP 400.
+
+The attack changed from BROKE to HELD.
+
+**RQ07:**
+
+Before the improvement, sending a JSON array caused an HTTP 500 error because the application attempted to call `.get()` on a list.
+
+After the improvement, the application correctly rejected the JSON array with HTTP 400.
+
+The attack changed from BROKE to HELD.
+
+**Conclusion:**
+
+Both malformed-request vulnerabilities were fixed.
+
+The before-and-after results demonstrate that the input validation improvement made the submission endpoint more reliable.
+
 ---
 
 ## Attack Run — After
 
 I ran the attack suite after the changes.
 
-Source:
-
-`results/attack_run_2026-11-09_1838_after.md`
+Source: `results/attack_run_2026-11-09_1838_after.md`
 
 The after-run contained 56 requests.
 
@@ -594,23 +654,34 @@ No HTTP 500 server errors were observed.
 | Malformed requests RQ01–RQ12 | Mostly HTTP 400; missing creator ID accepted |
 | Flood FL01_01–FL01_12 | 10 HTTP 200; 2 HTTP 429 |
 
-The attack runner reported zero automatically marked BROKE outcomes, but all 56 requests required manual HELD/BROKE assessment.
+### Confirmed Fixes
 
-**The complete 56-attack table still needs to be pasted from the saved report.** The summary above is not a substitute for the full attack-by-attack evidence.
+| Attack | Before verdict | After verdict |
+|---|---|---|
+| RQ06 | BROKE | HELD |
+| RQ07 | BROKE | HELD |
+
+The attack runner reported zero automatically marked BROKE outcomes in the after-run, but all 56 attacks still require manual HELD/BROKE assessment.
+
+The full after-run report is saved in `results/attack_run_2026-11-09_1838_after.md`.
 
 ### Did It Help, and How Do I Know?
 
-The improvement helped the service handle invalid requests and excessive submissions.
+Yes, the input validation improvement helped.
 
-The after-run produced no HTTP 500 errors, and the flood test returned HTTP 429 after the configured limit.
+RQ06 changed from HTTP 200 to HTTP 400.
+
+RQ07 changed from HTTP 500 to HTTP 400.
+
+These changes show that the application now rejects invalid creator IDs and JSON arrays instead of accepting them or crashing.
+
+The flood test also demonstrated that rate limiting blocks excessive submissions.
 
 However, classification problems remained.
 
 Six false-positive probes were still labeled AI, and most evasion probes were classified as unsure.
 
 The improvement made the API more reliable, but it did not solve the detector's accuracy problems.
-
-I cannot claim a measured before-and-after improvement without comparing the full before-run evidence.
 
 ---
 
@@ -673,6 +744,7 @@ This would allow some AI-generated writing to avoid confident detection, but it 
 - [x] Three evaluation commands completed
 - [x] Evaluation weaknesses documented
 - [x] Improvement described
+- [x] Before-and-after fixes confirmed
 - [x] After-run results summarized
 - [x] Remaining limitations and production tradeoff documented
 - [ ] Verify five appeal audit entries

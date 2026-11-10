@@ -1,6 +1,8 @@
+
 #!/usr/bin/env python3
 """
-Provenance Guard — the web service.
+Provenance Guard — CodePath AI201 Project 4
+Flask web service.
 """
 
 import uuid
@@ -13,10 +15,39 @@ import detector
 import scoring
 import stylometry
 
+
 app = Flask(__name__)
 
 
-# ── Rate limiting — UNIT 8 ───────────────────────────────────────────────────
+# ==========================================
+# JSON VALIDATION
+# ==========================================
+
+def get_payload():
+    """
+    Return a JSON dictionary or None.
+
+    Reject JSON arrays, strings, numbers,
+    null, and malformed JSON.
+    """
+    payload = request.get_json(silent=True)
+
+    if not isinstance(payload, dict):
+        return None
+
+    return payload
+
+
+def invalid_request():
+    return jsonify({
+        "error": "invalid_request",
+        "message": "Request body must be a JSON object."
+    }), 400
+
+
+# ==========================================
+# RATE LIMITING
+# ==========================================
 
 class _LimiterOff:
     def limit(self, *args, **kwargs):
@@ -25,20 +56,23 @@ class _LimiterOff:
 
 limiter = _LimiterOff()
 
+
 if config.RATE_LIMITING_ENABLED:
+
     from flask_limiter import Limiter
     from flask_limiter.util import get_remote_address
 
     def rate_limit_key():
-        payload = request.get_json(silent=True)
+        payload = get_payload()
 
-        if not isinstance(payload, dict):
+        if payload is None:
             return get_remote_address()
 
-        creator = payload.get("creator_id")
+        creator_id = payload.get("creator_id")
 
-        if isinstance(creator, str) and creator.strip():
-            return creator
+        if isinstance(creator_id, str):
+            if creator_id.strip():
+                return creator_id
 
         return get_remote_address()
 
@@ -51,13 +85,18 @@ if config.RATE_LIMITING_ENABLED:
 
     @app.errorhandler(429)
     def rate_limited(exc):
-        payload = request.get_json(silent=True)
+        payload = get_payload() or {}
 
-        if not isinstance(payload, dict):
-            payload = {}
+        creator_id = payload.get(
+            "creator_id",
+            "unknown"
+        )
+
+        if not isinstance(creator_id, str):
+            creator_id = "unknown"
 
         audit.log_rejection(
-            creator_id=payload.get("creator_id", "unknown"),
+            creator_id=creator_id,
             reason="rate_limited",
             limit=str(exc.description),
         )
@@ -69,18 +108,27 @@ if config.RATE_LIMITING_ENABLED:
         }), 429
 
 
-# ── Worked example ────────────────────────────────────────────────────────────
+# ==========================================
+# PING
+# ==========================================
 
 @app.post("/ping")
 def ping():
-    payload = request.get_json(silent=True) or {}
+    payload = get_payload()
+
+    if payload is None:
+        return invalid_request()
 
     return jsonify({
         "ok": True,
         "you_sent": payload.get("message"),
         "service": "provenance-guard",
-    })
+    }), 200
 
+
+# ==========================================
+# HEALTH
+# ==========================================
 
 @app.get("/health")
 def health():
@@ -92,34 +140,95 @@ def health():
         "detector_loaded": loaded,
         "rate_limiting": config.RATE_LIMITING_ENABLED,
         "log_entries": len(audit.read_entries()),
-    })
+    }), 200
 
 
-# ── SUBMIT ────────────────────────────────────────────────────────────────────
+# ==========================================
+# SUBMIT
+# ==========================================
 
 @app.post("/submit")
-# @limiter.limit(f"{config.RATE_LIMIT_PER_MINUTE}/minute;{config.RATE_LIMIT_PER_DAY}/day")
+@limiter.limit(
+    f"{config.RATE_LIMIT_PER_MINUTE}/minute;"
+    f"{config.RATE_LIMIT_PER_DAY}/day"
+)
 def submit():
     """
-    Accept text, run both signals, combine the scores,
-    log the decision, and return the result.
+    Accept text, run detection signals,
+    combine scores, log results, and
+    return a prediction.
     """
 
-    payload = request.get_json(silent=True) or {}
+    # FIX FOR RQ07:
+    # Reject JSON arrays before using .get().
+    payload = get_payload()
+
+    if payload is None:
+        return invalid_request()
 
     text = payload.get("text", "")
-    creator_id = payload.get("creator_id", "unknown")
-    if not isinstance(text, str) or not text.strip():
-      return jsonify({
-        "error": "invalid_text",
-        "message": "Text is required and cannot be empty.",
-    }), 400
+
+    creator_id = payload.get(
+        "creator_id",
+        "unknown"
+    )
+
+    # Validate text type.
+    if not isinstance(text, str):
+        return jsonify({
+            "error": "invalid_text",
+            "message": "Text must be a string."
+        }), 400
+
+    # Reject empty text.
+    if not text.strip():
+        return jsonify({
+            "error": "invalid_text",
+            "message": "Text is required and cannot be empty."
+        }), 400
+
+    # Validate creator ID.
+    if not isinstance(creator_id, str):
+        return jsonify({
+            "error": "invalid_creator_id",
+            "message": "Creator ID must be a string."
+        }), 400
+
+    if not creator_id.strip():
+        return jsonify({
+            "error": "invalid_creator_id",
+            "message": "Creator ID cannot be empty."
+        }), 400
+
+    # Create a unique content ID.
     content_id = str(uuid.uuid4())
 
-    model_score = detector.model_signal(text)
+    # FIX FOR MF02:
+    # Handle text too short for the detector.
+    try:
+        model_score = detector.model_signal(text)
+
+    except ValueError as exc:
+        return jsonify({
+            "error": "invalid_text",
+            "message": str(exc),
+        }), 400
+
+    # Calculate writing-style signal.
     style_score = stylometry.style_signal(text)
-    combined_score = scoring.combine_signals(model_score, style_score)
-    guess, label = scoring.score_to_label(combined_score)
+
+    # Combine the two signals.
+    combined_score = scoring.combine_signals(
+        model_score,
+        style_score
+    )
+
+    # Generate prediction.
+    guess, label = scoring.score_to_label(
+        combined_score
+    )
+
+    # Record decision in audit log.
     audit.log_decision(
         content_id=content_id,
         creator_id=creator_id,
@@ -130,6 +239,7 @@ def submit():
         label=label,
     )
 
+    # Return prediction.
     return jsonify({
         "content_id": content_id,
         "guess": guess,
@@ -137,17 +247,47 @@ def submit():
         "label": label,
         "model_score": model_score,
         "style_score": style_score,
-    })
+    }), 200
 
 
-# ── APPEAL — Milestone 5 ─────────────────────────────────────────────────────
+# ==========================================
+# APPEAL
+# ==========================================
 
 @app.post("/appeal")
 def appeal():
-    payload = request.get_json(silent=True) or {}
+    payload = get_payload()
 
-    content_id = payload.get("content_id", "")
-    reasoning = payload.get("reasoning", "")
+    if payload is None:
+        return invalid_request()
+
+    content_id = payload.get(
+        "content_id",
+        ""
+    )
+
+    reasoning = payload.get(
+        "reasoning",
+        ""
+    )
+
+    if not isinstance(content_id, str):
+        return jsonify({
+            "error": "invalid_content_id",
+            "message": "Content ID must be a string."
+        }), 400
+
+    if not content_id.strip():
+        return jsonify({
+            "error": "invalid_content_id",
+            "message": "Content ID is required."
+        }), 400
+
+    if not isinstance(reasoning, str):
+        return jsonify({
+            "error": "invalid_reasoning",
+            "message": "Reasoning must be a string."
+        }), 400
 
     entries = audit.entries_for(content_id)
 
@@ -157,7 +297,10 @@ def appeal():
             "message": "No submission was found with that content ID.",
         }), 404
 
-    creator_id = entries[0].get("creator_id", "unknown")
+    creator_id = entries[0].get(
+        "creator_id",
+        "unknown"
+    )
 
     audit.log_appeal(
         content_id=content_id,
@@ -169,37 +312,71 @@ def appeal():
         "content_id": content_id,
         "status": "under_review",
         "message": "Your appeal has been recorded and is under review.",
-    })
+    }), 200
 
-# ── AUDIT LOG ─────────────────────────────────────────────────────────────────
+
+# ==========================================
+# AUDIT LOG
+# ==========================================
 
 @app.get("/log")
 def get_log():
-    limit = request.args.get("limit", type=int)
-    entries = audit.read_entries(limit=limit)
+    limit = request.args.get(
+        "limit",
+        type=int
+    )
+
+    entries = audit.read_entries(
+        limit=limit
+    )
 
     return jsonify({
         "count": len(entries),
         "entries": entries,
-    })
+    }), 200
 
 
-# ── START SERVICE ──────────────────────────────────────────────────────────────
+# ==========================================
+# START FLASK SERVER
+# ==========================================
 
 def main():
-    print(f"Provenance Guard on http://{config.HOST}:{config.PORT}")
-    print(f"  detector model:  {config.DETECTOR_MODEL}")
     print(
-        f"  rate limiting:   "
+        f"Provenance Guard on "
+        f"http://{config.HOST}:{config.PORT}"
+    )
+
+    print(
+        f"  detector model: "
+        f"{config.DETECTOR_MODEL}"
+    )
+
+    print(
+        f"  rate limiting: "
         f"{'ON' if config.RATE_LIMITING_ENABLED else 'off (unit 8)'}"
     )
-    print(f"  audit log:       {config.AUDIT_LOG}")
-    print()
 
+    print(
+        f"  audit log: "
+        f"{config.AUDIT_LOG}"
+    )
+
+    print()
     print("Check it's alive:")
-    print(f'  curl -X POST http://{config.HOST}:{config.PORT}/ping \\')
-    print('    -H "Content-Type: application/json" \\')
-    print('    -d \'{"message": "hello"}\'')
+
+    print(
+        f'  curl -X POST '
+        f'http://{config.HOST}:{config.PORT}/ping \\'
+    )
+
+    print(
+        '    -H "Content-Type: application/json" \\'
+    )
+
+    print(
+        '    -d \'{"message": "hello"}\''
+    )
+
     print()
 
     app.run(
