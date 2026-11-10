@@ -5,15 +5,13 @@
 
 ## Getting Started
 
-This project is a Flask web service that analyzes writing and estimates whether it shows patterns associated with AI-generated or human-written text.
+Provenance Guard is a Flask web service that analyzes writing and estimates whether it shows patterns associated with AI-generated or human-written text.
 
-To start the service:
+Start the application:
 
-```bash
-python app.py
-```
+    python app.py
 
-The application runs at `http://127.0.0.1:5000`.
+The service runs at `http://127.0.0.1:5000`.
 
 For setup instructions, see [RUNNING.md](RUNNING.md).
 
@@ -24,16 +22,14 @@ For setup instructions, see [RUNNING.md](RUNNING.md).
 ## What This Does
 
 1. A writer submits text and a creator ID to `/submit`.
-2. `detector.py::model_signal` measures the text's predictability using GPT-2.
-3. `stylometry.py::style_signal` analyzes sentence-length variation, vocabulary variety, and punctuation.
+2. `detector.py::model_signal` analyzes text predictability using GPT-2.
+3. `stylometry.py::style_signal` analyzes writing patterns.
 4. `scoring.py::combine_signals` combines both scores.
-5. `scoring.py::score_to_label` assigns human, unsure, or AI.
-6. `audit.py` records the decision and its associated information.
-7. The API returns a content ID, confidence score, both signal scores, and a reader-friendly explanation.
+5. `scoring.py::score_to_label` assigns a classification.
+6. `audit.py` records the decision.
+7. The API returns the result and an explanation.
 
-The system is intended to provide an estimate, not proof of authorship.
-
----
+The system provides an estimate, not proof of authorship.
 
 ## Signals and Scoring
 
@@ -41,88 +37,99 @@ The system is intended to provide an estimate, not proof of authorship.
 
 **What it measures:**
 
-`detector.py::model_signal` uses GPT-2 perplexity to measure how predictable the submitted writing is.
+The model signal uses GPT-2 perplexity to measure how predictable submitted writing is.
 
-The perplexity value is converted into a score between 0 and 1. Higher scores indicate that the writing appears more AI-like according to this signal.
+Higher scores indicate writing that appears more AI-like according to this signal.
 
-**Why that might differ between human and AI writing:**
+**Why it matters:**
 
-AI-generated writing can contain predictable language patterns because language models frequently select statistically likely words.
+AI-generated writing can contain predictable language patterns.
 
-**What it cannot see:**
+**Limitations:**
 
-Predictability does not prove authorship. Human writing can also be predictable, especially when it is simple or formal. Edited AI writing can be less predictable.
+Human writing can also be predictable, particularly when it is simple or formal. Edited AI writing may be less predictable.
+
+Predictability alone cannot prove authorship.
 
 ### Signal Two — Style Signal
 
 **What it measures:**
 
-`stylometry.py::style_signal` measures three characteristics:
+The style signal analyzes:
 
 - Sentence-length variation
-- Vocabulary variety using type-token ratio
+- Vocabulary variety
 - Punctuation density
 
-**Why that might differ between human and AI writing:**
+**Why it matters:**
 
-AI-generated writing may use regular sentence structures and consistent vocabulary patterns. Human writing can have greater variation.
+AI-generated writing may use consistent sentence structures and vocabulary patterns.
 
-**What it cannot see:**
+**Limitations:**
 
-Human writers can also use regular sentence structures, and AI-generated writing can be edited to imitate human variation.
+Human writers can also write consistently, and AI-generated text can imitate human variation.
 
-These characteristics are not reliable proof of authorship.
+These patterns do not reliably prove who wrote the text.
 
 ### The Combining Rule
 
-**The rule:**
+The system combines both signals using equal weights.
 
-I combine the model signal and style signal using an equally weighted average.
+**Model weight:** 0.50
 
-**The numbers:**
-
-- Model weight: 0.50
-- Style weight: 0.50
+**Style weight:** 0.50
 
 Formula:
 
-`combined_score = (0.50 * model_score) + (0.50 * style_score)`
+    combined_score = (0.50 * model_score) + (0.50 * style_score)
 
-**Where it lives:**
+Implementation: `scoring.py::combine_signals`
 
-`scoring.py::combine_signals`
+**Example where the signals disagreed:**
 
-**A case where my signals disagreed:**
+| Signal | Score |
+|---|---:|
+| Model | 0.6722 |
+| Style | 0.4904 |
+| Combined | 0.5813 |
 
-One test produced:
+The combined score resulted in an unsure classification.
 
-- Model score: 0.6722
-- Style score: 0.4904
-- Combined score: 0.5813
-
-The final score fell in the unsure range. This demonstrates how combining the signals can avoid a confident classification when the individual scores differ.
+This demonstrates why combining signals can be useful when individual measurements disagree.
 
 ---
 
 ## Label Variants
 
-| Label | Score range | Message |
-|---|---|---|
-| Human | 0.00–0.35 | This writing shows patterns that are more consistent with human-written text. |
-| Unsure | Above 0.35 and below 0.65 | We are not confident whether this writing was produced by a person or AI. |
-| AI | 0.65–1.00 | This writing shows patterns that are more consistent with AI-generated text, but this result is not proof of authorship. |
+| Label | Score range |
+|---|---|
+| Human | 0.00–0.35 |
+| Unsure | Above 0.35 and below 0.65 |
+| AI | 0.65–1.00 |
 
-**Why I worded the unsure message this way:**
+**Human message:**
 
-I wanted the system to admit uncertainty instead of making an unsupported accusation.
+"This writing shows patterns that are more consistent with human-written text."
 
-During earlier manual testing, all three labels were observed:
+**Unsure message:**
 
-- Human: 0.3005
-- Unsure: 0.5813
-- AI: 0.7109
+"We are not confident whether this writing was produced by a person or AI."
 
-However, my later Unit 8 evaluation scenarios did not reproduce the human label.
+**AI message:**
+
+"This writing shows patterns that are more consistent with AI-generated text, but this result is not proof of authorship."
+
+I chose these messages because the system should communicate uncertainty instead of accusing writers of using AI.
+
+Earlier manual testing produced all three labels:
+
+| Label | Score |
+|---|---:|
+| Human | 0.3005 |
+| Unsure | 0.5813 |
+| AI | 0.7109 |
+
+The later Unit 8 evaluation scenarios did not reproduce the human label.
 
 ---
 
@@ -130,90 +137,88 @@ However, my later Unit 8 evaluation scenarios did not reproduce the human label.
 
 ### A Submission
 
-```bash
-curl -X POST http://127.0.0.1:5000/submit \
-  -H "Content-Type: application/json" \
-  -d '{"text":"The system works well. It handles most cases correctly and provides good results. Users generally find it easy to use and understand.","creator_id":"siyani"}'
-```
+Command:
 
-**Actual response:**
+    curl -X POST http://127.0.0.1:5000/submit \
+      -H "Content-Type: application/json" \
+      -d '{"text":"The system works well. It handles most cases correctly and provides good results. Users generally find it easy to use and understand.","creator_id":"siyani"}'
 
-```json
-{
-  "confidence": 0.5813,
-  "content_id": "e7db2c2c-3b27-479b-ad20-b31bd4129a81",
-  "guess": "unsure",
-  "label": "We are not confident whether this writing was produced by a person or AI.",
-  "model_score": 0.6722,
-  "style_score": 0.4904
-}
-```
+**Recorded response:**
+
+    {
+      "confidence": 0.5813,
+      "content_id": "e7db2c2c-3b27-479b-ad20-b31bd4129a81",
+      "guess": "unsure",
+      "label": "We are not confident whether this writing was produced by a person or AI.",
+      "model_score": 0.6722,
+      "style_score": 0.4904
+    }
 
 ### An Appeal
 
-```bash
-curl -X POST http://127.0.0.1:5000/appeal \
-  -H "Content-Type: application/json" \
-  -d '{"content_id":"e7db2c2c-3b27-479b-ad20-b31bd4129a81","reasoning":"I wrote this text myself and would like the result reviewed."}'
-```
+Command:
 
-**Actual response:**
+    curl -X POST http://127.0.0.1:5000/appeal \
+      -H "Content-Type: application/json" \
+      -d '{"content_id":"e7db2c2c-3b27-479b-ad20-b31bd4129a81","reasoning":"I wrote this text myself and would like the result reviewed."}'
 
-```json
-{
-  "content_id": "e7db2c2c-3b27-479b-ad20-b31bd4129a81",
-  "message": "Your appeal has been recorded and is under review.",
-  "status": "under_review"
-}
-```
+**Recorded response:**
 
-The audit log recorded the original decision and a subsequent appeal event with the status `under_review`.
+    {
+      "content_id": "e7db2c2c-3b27-479b-ad20-b31bd4129a81",
+      "message": "Your appeal has been recorded and is under review.",
+      "status": "under_review"
+    }
+
+The appeal workflow allows a writer to request a review instead of treating the initial classification as final.
 
 ---
 
 ## How I Used AI
 
-### Moment 1
+### Moment 1 — Debugging the API
 
 **What I asked for:**
 
-I asked AI to help debug my Flask `/submit` route when the style score kept returning `null`.
+I asked AI to help debug my Flask `/submit` endpoint because the style score was returning `null`.
 
 **What came back:**
 
-AI helped identify problems with saving my updated `app.py` and connecting the stylometry and scoring functions.
+AI helped identify issues with connecting the scoring functions and saving changes to the application.
 
 **What I changed:**
 
-I saved the corrected code and tested the endpoint to verify that both signals and the combined confidence score appeared in the response.
+I corrected the implementation and tested the endpoint until both scores appeared in the response.
 
-### Moment 2
+### Moment 2 — Classification and Appeals
 
 **What I asked for:**
 
-I asked AI to help implement and test the three classification labels and the appeal workflow.
+I asked AI for help implementing the three classification labels and the appeal workflow.
 
 **What came back:**
 
-AI helped with `score_to_label`, `/appeal`, and example test requests.
+AI provided code suggestions and example requests.
 
 **What I changed:**
 
-I tested the API, verified the returned labels, and improved the handling of invalid submissions.
+I tested the API responses and improved the handling of invalid requests.
 
-### Moment 3
+### Moment 3 — Unit 8 Testing
 
 **What I asked for:**
 
-I used AI to help prepare the Unit 8 evaluation scenarios, interpret the results, and organize my README.
+I asked AI to help prepare evaluation scenarios, interpret attack results, and organize the README.
 
 **What came back:**
 
-AI generated synthetic human-style examples, AI-writing comparison examples, and explanations of the observed results.
+AI generated synthetic human-style examples, comparison examples, and explanations of the test results.
 
 **What I changed:**
 
-I ran the evaluation commands myself and reported the observed outcomes. I identified the synthetic samples as AI-generated rather than presenting them as authentic human writing.
+I executed the tests, examined the outputs, and documented the weaknesses.
+
+The synthetic human-style examples were generated by AI and are not evidence of performance on genuinely human-written text.
 
 ---
 
@@ -221,22 +226,20 @@ I ran the evaluation commands myself and reported the observed outcomes. I ident
 
 ## Rate Limiting
 
-I added rate limiting to protect the service from excessive submissions.
+I implemented rate limiting to prevent users from overwhelming the submission endpoint.
 
 The configured limits are:
 
 - 10 submissions per minute
 - 200 submissions per day
 
-I chose these limits because a normal user should not need to submit writing repeatedly within a short period.
+These limits allow normal use while restricting excessive repeated requests.
 
 ### Rate-Limit Test
 
 Command:
 
-```bash
-python run_attacks.py --flood 15
-```
+    python run_attacks.py --flood 15
 
 **Observed results:**
 
@@ -246,53 +249,71 @@ python run_attacks.py --flood 15
 | HTTP 429 | 5 |
 | Total | 15 |
 
-After ten accepted submissions, the remaining five requests were blocked.
+The first ten requests succeeded.
 
-I also checked the audit log. The earlier log inspection showed 24 entries, including five rejected requests.
+The remaining five requests were rejected with HTTP 429.
 
-The rejection records included the creator ID, timestamp, rejection reason, and limit.
+An earlier audit-log inspection showed 24 entries, including five rate-limit rejections.
 
-This demonstrates that rate limiting is functioning.
+The limiter currently uses in-memory storage.
 
-The current limiter uses in-memory storage. In a production environment, I would use shared persistent storage so limits remain consistent across restarts and multiple servers.
+In production, I would use shared persistent storage so limits remain consistent across server restarts and multiple instances.
 
 ---
 
 ## Attack Run — Before
 
-I ran the attack suite before improving request validation.
+**Source:** `results/attack_run_2026-11-09_1809_before.md`
 
-Source: `results/attack_run_2026-11-09_1809_before.md`
+I ran the attack suite to identify weaknesses in the application.
 
-The before-run revealed important weaknesses in request handling.
+The tests included evasion, false positives, prompt injection, malformed content, malformed requests, and flooding.
 
-### Before-Run Findings
+### Important Before-Run Findings
 
-**RQ06 — Invalid creator ID**
+| Attack | Input | HTTP status | Verdict |
+|---|---|---:|---|
+| RQ04 | Malformed request | 400 | HELD |
+| RQ05 | Null text | 400 | HELD |
+| RQ06 | Creator ID is an object | 200 | BROKE |
+| RQ07 | JSON array instead of object | 500 | BROKE |
+| RQ08 | Unparseable JSON | 400 | HELD |
+| RQ09 | Empty body | 400 | HELD |
+| RQ10 | Form-encoded body | 400 | HELD |
+| RQ11 | Incorrect content type | 400 | HELD |
+| RQ12 | Deeply nested JSON | 400 | HELD |
+| FL01_01–FL01_10 | First ten flood requests | 200 | HELD |
+| FL01_11–FL01_12 | Excess flood requests | 429 | HELD |
 
-The request submitted a JSON object as the creator ID instead of a string.
+The full original before-run report contains additional attack cases. Their individual outcomes are not reproduced in this table.
 
-The application accepted the request and returned HTTP 200 with a human classification.
+### RQ06 — Invalid Creator ID
+
+The attack submitted a JSON object instead of a string as the creator ID.
+
+The application accepted the request and returned HTTP 200.
+
+It classified the submitted text as human.
 
 **Verdict: BROKE**
 
-**RQ07 — JSON Array Request**
+The failure occurred during input validation because the application did not reject an invalid creator ID type.
 
-The request sent a JSON array instead of a JSON object.
+### RQ07 — JSON Array Request
 
-The application returned HTTP 500 because it attempted to call `.get()` on a list.
+The attack submitted a JSON array instead of a JSON object.
+
+The application attempted to call `.get()` on a list.
+
+This caused an `AttributeError` and an HTTP 500 server error.
 
 **Verdict: BROKE**
 
-This was the most serious failure because malformed input caused an unhandled server error.
+The failure occurred before classification because the request structure was not validated.
 
-**RQ08–RQ12 — Invalid Requests**
+This was the most serious API reliability problem found in the confirmed before-run results.
 
-These requests returned HTTP 400.
-
-**Verdict: HELD**
-
-**Flooding Test**
+### Flooding
 
 The first ten requests returned HTTP 200.
 
@@ -300,136 +321,142 @@ Requests eleven and twelve returned HTTP 429.
 
 **Verdict: HELD**
 
-The rate limiter successfully blocked excessive submissions.
+The rate limiter prevented the extra requests from being processed.
 
-### What Needed Improvement
+---
 
-The main problem was insufficient input validation in the submission route.
+## Audit Logging
 
-The application needed to verify that incoming JSON was an object and that the creator ID had the correct data type before processing the request.
+The application records submission decisions, rejected requests, and appeal events.
 
-The complete attack-by-attack before-run output is saved in `results/attack_run_2026-11-09_1809_before.md`. The remaining individual attacks still need manual HELD/BROKE assessment.
+The log helps explain how the system arrived at a decision and provides information for investigating problems.
 
 ### Ten Audit Log Entries
 
-The following nine entries were selected from the audit extract. They show false-positive classifications, evasion, prompt injection, unusual content, and rate-limit rejection.
+The following examples include eight classification decisions, one rate-limit rejection, and one appeal.
 
-```json
-[
-  {
-    "content_id": "d37193f0-2772-4fd3-80e9-e3de4dc3d0c2",
-    "creator_id": "attacker_FP02",
-    "guess": "ai",
-    "model_score": 0.7387,
-    "style_score": 0.6271,
-    "combined_score": 0.6829,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:21:37+00:00"
-  },
-  {
-    "content_id": "26a75341-ac49-4bfa-a344-fe01e8c9b04e",
-    "creator_id": "attacker_FP03",
-    "guess": "ai",
-    "model_score": 0.8051,
-    "style_score": 0.594,
-    "combined_score": 0.6996,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:21:37+00:00"
-  },
-  {
-    "content_id": "f57832fd-6fbc-44bd-a2f6-301ba91684d5",
-    "creator_id": "attacker_FP04",
-    "guess": "ai",
-    "model_score": 0.8329,
-    "style_score": 0.5405,
-    "combined_score": 0.6867,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:21:37+00:00"
-  },
-  {
-    "content_id": "56375ba6-4390-49c8-aa92-15ad3222fe5d",
-    "creator_id": "attacker_EV01",
-    "guess": "unsure",
-    "model_score": 0.1635,
-    "style_score": 0.6006,
-    "combined_score": 0.3821,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:21:36+00:00"
-  },
-  {
-    "content_id": "d63d636d-24c9-40ad-bdd4-53ddf607e367",
-    "creator_id": "attacker_EV10",
-    "guess": "ai",
-    "model_score": 0.9792,
-    "style_score": 0.7435,
-    "combined_score": 0.8614,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:21:37+00:00"
-  },
-  {
-    "content_id": "5ca30375-3b45-4167-8074-1d06867fa448",
-    "creator_id": "attacker_PI02",
-    "guess": "human",
-    "model_score": 0.2044,
-    "style_score": 0.3815,
-    "combined_score": 0.2929,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:19:24+00:00"
-  },
-  {
-    "content_id": "714f3cf7-4a58-4beb-91c8-f7441c274ee8",
-    "creator_id": "attacker_MF03",
-    "guess": "human",
-    "model_score": 0.0,
-    "style_score": 0.6667,
-    "combined_score": 0.3333,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:19:25+00:00"
-  },
-  {
-    "content_id": "a76107c2-9769-467b-9c6d-c6f166d0d74c",
-    "creator_id": "attacker_flood",
-    "guess": "human",
-    "model_score": 0.0287,
-    "style_score": 0.606,
-    "combined_score": 0.3173,
-    "status": "decided",
-    "timestamp": "2026-11-09T23:19:26+00:00"
-  },
-  {
-    "creator_id": "attacker_flood",
-    "event": "rejected",
-    "limit": "10 per 1 minute",
-    "reason": "rate_limited",
-    "status": "rejected",
-    "timestamp": "2026-11-09T23:19:26+00:00"
-  }
-]
-```
+The first nine are abbreviated records previously extracted from the audit data. The tenth is a complete appeal record confirmed directly from `logs/audit.jsonl`.
 
-These are nine distinct entries. One additional complete record must be added from `logs/audit.jsonl` to meet the requirement of ten entries.
+    [
+      {
+        "content_id": "d37193f0-2772-4fd3-80e9-e3de4dc3d0c2",
+        "creator_id": "attacker_FP02",
+        "guess": "ai",
+        "model_score": 0.7387,
+        "style_score": 0.6271,
+        "combined_score": 0.6829,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:21:37+00:00"
+      },
+      {
+        "content_id": "26a75341-ac49-4bfa-a344-fe01e8c9b04e",
+        "creator_id": "attacker_FP03",
+        "guess": "ai",
+        "model_score": 0.8051,
+        "style_score": 0.594,
+        "combined_score": 0.6996,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:21:37+00:00"
+      },
+      {
+        "content_id": "f57832fd-6fbc-44bd-a2f6-301ba91684d5",
+        "creator_id": "attacker_FP04",
+        "guess": "ai",
+        "model_score": 0.8329,
+        "style_score": 0.5405,
+        "combined_score": 0.6867,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:21:37+00:00"
+      },
+      {
+        "content_id": "56375ba6-4390-49c8-aa92-15ad3222fe5d",
+        "creator_id": "attacker_EV01",
+        "guess": "unsure",
+        "model_score": 0.1635,
+        "style_score": 0.6006,
+        "combined_score": 0.3821,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:21:36+00:00"
+      },
+      {
+        "content_id": "d63d636d-24c9-40ad-bdd4-53ddf607e367",
+        "creator_id": "attacker_EV10",
+        "guess": "ai",
+        "model_score": 0.9792,
+        "style_score": 0.7435,
+        "combined_score": 0.8614,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:21:37+00:00"
+      },
+      {
+        "content_id": "5ca30375-3b45-4167-8074-1d06867fa448",
+        "creator_id": "attacker_PI02",
+        "guess": "human",
+        "model_score": 0.2044,
+        "style_score": 0.3815,
+        "combined_score": 0.2929,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:19:24+00:00"
+      },
+      {
+        "content_id": "714f3cf7-4a58-4beb-91c8-f7441c274ee8",
+        "creator_id": "attacker_MF03",
+        "guess": "human",
+        "model_score": 0.0,
+        "style_score": 0.6667,
+        "combined_score": 0.3333,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:19:25+00:00"
+      },
+      {
+        "content_id": "a76107c2-9769-467b-9c6d-c6f166d0d74c",
+        "creator_id": "attacker_flood",
+        "guess": "human",
+        "model_score": 0.0287,
+        "style_score": 0.606,
+        "combined_score": 0.3173,
+        "status": "decided",
+        "timestamp": "2026-11-09T23:19:26+00:00"
+      },
+      {
+        "creator_id": "attacker_flood",
+        "event": "rejected",
+        "limit": "10 per 1 minute",
+        "reason": "rate_limited",
+        "status": "rejected",
+        "timestamp": "2026-11-09T23:19:26+00:00"
+      },
+      {
+        "timestamp": "2026-11-09T23:56:11+00:00",
+        "content_id": "f556c003-65c1-42d2-82ce-79ba4c6fb53c",
+        "creator_id": "appeal_test_4",
+        "event": "appeal",
+        "status": "under_review",
+        "reasoning": ""
+      }
+    ]
+
+The original log should be used when complete unabridged audit records are required.
 
 ### The Single Worst Outcome
 
-The most concerning outcome was the false-positive behavior.
+The most concerning classification problem was the false-positive behavior.
 
-Six of the eight false-positive attack inputs in the after-run were classified as AI.
+In the after-run, six of eight false-positive probes received AI classifications.
 
-This is serious because a human writer could be incorrectly accused of using AI based on writing patterns that are not reliable proof of authorship.
+This is concerning because predictable human writing could be incorrectly classified as AI-generated.
 
-I would be most concerned about explaining this result to a writer who submitted their own work.
+An incorrect classification could unfairly affect a writer if someone treated the detector's output as proof.
 
 ---
 
 ## Run Log and Verdicts
 
-I ran the following commands:
+I ran three evaluation commands:
 
-```bash
-python run_eval.py --label before
-python run_eval.py --label trial2
-python run_eval.py --label trial3
-```
+    python run_eval.py --label before
+    python run_eval.py --label trial2
+    python run_eval.py --label trial3
 
 The results were saved in:
 
@@ -437,285 +464,377 @@ The results were saved in:
 - `results/run_2026-11-09_1851_trial2.md`
 - `results/run_2026-11-09_1851_trial3.md`
 
-Each evaluation command ran three internal trials.
+Each command ran three internal trials.
 
 ### Evaluation Results
 
-| Criterion | Target | Run 1 | Run 2 | Run 3 | Verdict |
-|---|---|---|---|---|---|
-| 1. False positives | At most 1 of 10 genuine human texts labeled AI | 10/10 synthetic human-style samples labeled AI | 10/10 | 10/10 | Synthetic test failed; genuine-human criterion not verified |
-| 2. Score separation | AI mean at least 0.20 higher | 1/5 AI examples labeled AI | 1/5 | 1/5 | Numerical comparison pending |
-| 3. Label coverage | All three labels | AI and unsure | AI and unsure | AI and unsure | Failed on selected inputs |
-| 4. Appeals | 5/5 valid appeals under review and audited | 5/5 returned under_review in separate test | Not repeated | Not repeated | Response test passed; audit verification pending |
-| 5. Bad inputs | 3/3 controlled responses without crashing | No crash observed | No crash observed | No crash observed | HTTP status verification pending |
+| Criterion | Target | Run 1 | Run 2 | Run 3 |
+|---|---|---|---|---|
+| False positives | At most 1/10 genuine human texts classified AI | 10/10 synthetic samples classified AI | 10/10 | 10/10 |
+| Score separation | AI mean at least 0.20 higher | Numerical verification pending | Pending | Pending |
+| Label coverage | All three labels | AI and unsure | AI and unsure | AI and unsure |
+| Appeals | 5/5 accepted and audited | 5/5 responses succeeded in separate test | Not repeated | Not repeated |
+| Bad inputs | Controlled responses without crashes | No crash observed | No crash observed | No crash observed |
 
-### Real Output from One Trial
+### Criterion 1 — False Positives
 
-Source: `results/run_2026-11-09_1851_before.md`
+All ten synthetic human-style samples received AI classifications.
 
-Produced by `run_eval.py` calling the `/submit` endpoint in `app.py`.
+One example returned:
 
-```json
-{
-  "status": 200,
-  "guess": "ai",
-  "confidence": 0.735,
-  "model_score": 0.9011,
-  "style_score": 0.5689,
-  "label": "This writing shows patterns that are more consistent with AI-generated text, but this result is not proof of authorship."
-}
-```
+    {
+      "status": 200,
+      "guess": "ai",
+      "confidence": 0.735,
+      "model_score": 0.9011,
+      "style_score": 0.5689
+    }
 
-This was a synthetic human-style paragraph about going to the library.
+The synthetic samples were AI-generated, so this test does not establish the false-positive rate for genuine human writing.
 
-### Appeals Test
+**Verdict:** The synthetic test performed poorly, but the genuine-human criterion remains unverified.
 
-I submitted five separate pieces of writing and appealed each returned content ID.
+### Criterion 2 — Score Separation
 
-All five appeals returned HTTP 200 and `under_review`.
+Four of five AI examples received unsure classifications.
 
-| Appeal | HTTP status | Appeal status |
-|---|---|---|
+One received an AI classification.
+
+This indicates that the detector was not consistently confident when evaluating those examples.
+
+However, the required comparison concerns mean scores rather than classification counts.
+
+**Verdict:** Numerical score separation still requires verification.
+
+### Criterion 3 — Label Coverage
+
+The evaluation produced AI and unsure labels.
+
+It did not produce a human label.
+
+Although earlier manual testing produced all three labels, these evaluation scenarios did not.
+
+**Verdict: FAILED for the selected evaluation inputs.**
+
+### Criterion 4 — Appeals
+
+I submitted five separate pieces of writing and appealed their content IDs.
+
+All five appeal requests returned HTTP 200 and `under_review`.
+
+| Appeal | HTTP status | Result |
+|---|---:|---|
 | 1 | 200 | under_review |
 | 2 | 200 | under_review |
 | 3 | 200 | under_review |
 | 4 | 200 | under_review |
 | 5 | 200 | under_review |
 
-The API response portion passed. The five corresponding audit entries still need to be verified.
+One corresponding audit entry was confirmed:
 
----
+    {
+      "timestamp": "2026-11-09T23:56:11+00:00",
+      "content_id": "f556c003-65c1-42d2-82ce-79ba4c6fb53c",
+      "creator_id": "appeal_test_4",
+      "event": "appeal",
+      "status": "under_review",
+      "reasoning": ""
+    }
 
-## Diagnoses
-
-### Criterion 1 — False Positives
-
-All ten synthetic human-style samples received AI classifications.
-
-One example produced:
-
-- Model score: 0.9011
-- Style score: 0.5689
-- Combined score: 0.735
-
-The model signal gave the writing a high AI score because it was predictable.
-
-The combining rule assigned equal weight to both signals, resulting in a score above the AI threshold of 0.65.
-
-The problem occurs in the model signal and combining rule.
-
-The examples were AI-generated synthetic text, so these results do not establish the false-positive rate on genuine human writing.
-
-### Criterion 2 — Score Separation
-
-Four of the five AI examples received unsure classifications, while one received AI.
-
-This indicates that the detector was not consistently confident about those AI-generated examples.
-
-However, labels alone do not establish whether the mean AI score exceeded the mean comparison score by 0.20.
-
-The numerical means must be calculated before declaring a pass or fail.
-
-### Criterion 3 — Label Coverage
-
-The evaluation produced AI and unsure labels but did not produce human.
-
-The label mapping supports all three categories, but the selected inputs did not reach the human score range.
-
-This is a problem with the tested score distribution and coverage.
-
-### Criterion 4 — Appeals
-
-The appeal endpoint accepted five valid requests and returned `under_review` for each one.
-
-The route behaved correctly in this manual test.
-
-The audit entries still need to be checked to confirm the full criterion.
+**Verdict:** All five API responses passed. Verification of all five audit entries is still pending.
 
 ### Criterion 5 — Bad Inputs
 
 Missing and empty text were rejected without an observed crash.
 
-The extremely long input was accepted and classified as AI.
+An extremely long text input was accepted and classified as AI.
 
-The route handled these inputs without an observed server failure, but maximum input length validation could be improved.
+The endpoint handled these test inputs without an observed server failure.
+
+**Verdict:** No crash observed; complete HTTP-status verification and stronger length validation remain possible improvements.
+
+---
+
+## Attack Diagnoses
 
 ### False-Positive Attacks
 
 Six false-positive probes were classified as AI.
 
-The model signal can treat predictable human-like writing as AI-generated.
+The model signal can assign high scores to predictable writing even when predictability is not proof of AI authorship.
 
-The style signal can also assign higher scores to regular sentence patterns.
+The combining rule can then produce a score above the AI threshold.
 
-Because the combining rule uses equal weights, these signals can produce a confident AI classification.
+**Failure stage:** Model signal and score combination.
 
 ### Evasion Attacks
 
-Nine of ten evasion inputs returned unsure.
+Nine of ten evasion probes returned unsure.
 
-Changes in wording and writing patterns can affect perplexity and stylometric measurements.
+Changes to sentence structure, vocabulary, and writing style can affect perplexity and stylometric measurements.
 
-This reduces the detector's confidence even when the underlying writing originated from AI.
+This can reduce the detector's confidence even when writing originated from AI.
+
+**Failure stage:** Signal reliability and score calibration.
 
 ### Prompt-Injection Attacks
 
-The prompt-injection inputs produced human or unsure labels.
+The prompt-injection probes produced human or unsure classifications.
 
-The results alone do not prove whether the injected instructions changed the detector's behavior.
+These results alone do not prove that injected instructions changed the detector's behavior.
 
-The system should continue treating submitted writing as data rather than instructions.
+The service should continue treating submitted writing as data, not instructions.
+
+**Risk area:** Input handling and detector robustness.
+
+### Malformed Content
+
+Some unusual content was rejected, while other inputs were accepted and classified.
+
+The application could benefit from stricter validation of extreme or unusual text.
+
+**Risk area:** Input validation.
 
 ### Malformed Requests
 
-Most malformed requests were rejected with HTTP 400.
+Before the improvement, RQ06 accepted an invalid creator ID and RQ07 caused an HTTP 500 error.
 
-However, some unusual inputs were accepted and classified.
+These problems occurred because the endpoint did not sufficiently validate the incoming JSON structure and field types.
 
-The route could use stronger validation for missing creator IDs, control characters, and unusual text.
+**Failure stage:** Request validation.
 
-### Flooding Attacks
+### Flooding
 
-The first ten flood submissions returned HTTP 200.
+The first ten requests were accepted.
 
-The next two returned HTTP 429.
+Later requests returned HTTP 429.
 
-This demonstrates that rate limiting blocked the excess requests.
+**Verdict: HELD**
+
+The configured rate limit successfully restricted excessive submissions.
 
 ---
 
 ## The Improvement
 
-**What I changed:**
+### What I Changed
 
-I strengthened request validation and added rate limiting to the submission endpoint.
+I strengthened request validation in the submission endpoint.
 
-The service returns controlled responses for malformed requests and limits repeated submissions.
+The application now rejects JSON arrays where an object is required and rejects creator IDs with invalid data types.
 
-The configured rate limits are ten submissions per minute and 200 per day.
+I also implemented rate limiting to control excessive submissions.
 
-**Which diagnosis pointed at it:**
+### Why I Made This Change
 
-The malformed-request and flooding attacks showed that the service needed stronger protection against invalid requests and excessive submissions.
+The before-run showed two confirmed request-validation failures.
 
-These improvements address API reliability rather than authorship-detection accuracy.
+RQ06 accepted a creator ID with the wrong type.
+
+RQ07 crashed when the request body was a JSON array.
+
+These failures showed that the application needed to validate incoming requests before processing them.
 
 ### Before and After Comparison
 
-I compared the results of two malformed-request attacks before and after improving input validation.
-
 | Attack | Before | After | Result |
 |---|---|---|---|
-| RQ06 — creator_id is an object | HTTP 200 | HTTP 400 | Fixed |
+| RQ06 — Creator ID is an object | HTTP 200 | HTTP 400 | Fixed |
 | RQ07 — JSON array instead of object | HTTP 500 | HTTP 400 | Fixed |
 
-**RQ06:**
+### RQ06 — Before and After
 
-Before the improvement, the application accepted a JSON object as the creator ID and returned HTTP 200.
+**Before:**
 
-After the improvement, the application rejected the invalid creator ID with HTTP 400.
+The application accepted an object as the creator ID and returned HTTP 200.
 
-The attack changed from BROKE to HELD.
+**After:**
 
-**RQ07:**
+The application rejected the invalid creator ID and returned HTTP 400.
 
-Before the improvement, sending a JSON array caused an HTTP 500 error because the application attempted to call `.get()` on a list.
+**Verdict: BROKE → HELD**
 
-After the improvement, the application correctly rejected the JSON array with HTTP 400.
+### RQ07 — Before and After
 
-The attack changed from BROKE to HELD.
+**Before:**
 
-**Conclusion:**
+The application attempted to call `.get()` on a list.
 
-Both malformed-request vulnerabilities were fixed.
+This caused an HTTP 500 server error.
 
-The before-and-after results demonstrate that the input validation improvement made the submission endpoint more reliable.
+**After:**
+
+The application rejected the JSON array with HTTP 400.
+
+**Verdict: BROKE → HELD**
+
+### Did the Improvement Work?
+
+Yes, for the two confirmed request-validation vulnerabilities.
+
+Both attacks changed from failures to controlled HTTP 400 responses.
+
+The improvement made the API more reliable and prevented the previously observed crash.
+
+However, it did not solve the detector's classification accuracy problems.
 
 ---
 
 ## Attack Run — After
 
-I ran the attack suite after the changes.
+**Source:** `results/attack_run_2026-11-09_1838_after.md`
 
-Source: `results/attack_run_2026-11-09_1838_after.md`
+I ran the attack suite again after making the changes.
 
 The after-run contained 56 requests.
 
-No HTTP 500 server errors were observed.
+No HTTP 500 errors were observed.
 
-### Attack Results
+### After-Run Summary
 
-| Attack category | Observed result |
+| Category | Observed results |
 |---|---|
 | Evasion EV01–EV10 | 9 unsure, 1 AI |
 | False positives FP01–FP08 | 6 AI, 1 unsure, 1 human |
-| Prompt injection PI01–PI06 | Mostly unsure; one human |
-| Malformed content MF01–MF08 | 2 HTTP 400; 6 accepted and classified |
-| Malformed requests RQ01–RQ12 | Mostly HTTP 400; missing creator ID accepted |
-| Flood FL01_01–FL01_12 | 10 HTTP 200; 2 HTTP 429 |
+| Prompt injection PI01–PI06 | 5 unsure, 1 human |
+| Malformed content MF01–MF08 | 2 HTTP 400, 6 HTTP 200 |
+| Malformed requests RQ01–RQ12 | 11 HTTP 400, 1 HTTP 200 |
+| Flood FL01_01–FL01_12 | 10 HTTP 200, 2 HTTP 429 |
 
-### Confirmed Fixes
+### Detailed After-Run Results
 
-| Attack | Before verdict | After verdict |
-|---|---|---|
-| RQ06 | BROKE | HELD |
-| RQ07 | BROKE | HELD |
+The following table records the observed results. HELD and BROKE are manual interpretations based on the attack's purpose. For prompt-injection probes, the classification alone does not establish whether the injection succeeded.
 
-The attack runner reported zero automatically marked BROKE outcomes in the after-run, but all 56 attacks still require manual HELD/BROKE assessment.
+| Attack | HTTP status | Classification | Assessment |
+|---|---:|---|---|
+| EV01 | 200 | unsure | Evasion concern |
+| EV02 | 200 | unsure | Evasion concern |
+| EV03 | 200 | unsure | Evasion concern |
+| EV04 | 200 | unsure | Evasion concern |
+| EV05 | 200 | unsure | Evasion concern |
+| EV06 | 200 | unsure | Evasion concern |
+| EV07 | 200 | unsure | Evasion concern |
+| EV08 | 200 | unsure | Evasion concern |
+| EV09 | 200 | unsure | Evasion concern |
+| EV10 | 200 | AI | HELD |
+| FP01 | 200 | unsure | Uncertain classification |
+| FP02 | 200 | AI | False-positive concern |
+| FP03 | 200 | AI | False-positive concern |
+| FP04 | 200 | AI | False-positive concern |
+| FP05 | 200 | AI | False-positive concern |
+| FP06 | 200 | AI | False-positive concern |
+| FP07 | 200 | AI | False-positive concern |
+| FP08 | 200 | human | HELD |
+| PI01 | 200 | unsure | Injection outcome unverified |
+| PI02 | 200 | human | Injection outcome unverified |
+| PI03 | 200 | unsure | Injection outcome unverified |
+| PI04 | 200 | unsure | Injection outcome unverified |
+| PI05 | 200 | unsure | Injection outcome unverified |
+| PI06 | 200 | unsure | Injection outcome unverified |
+| MF01 | 400 | None | HELD |
+| MF02 | 400 | None | HELD |
+| MF03 | 200 | human | Accepted unusual content |
+| MF04 | 200 | human | Accepted unusual content |
+| MF05 | 200 | AI | Accepted unusual content |
+| MF06 | 200 | AI | Accepted unusual content |
+| MF07 | 200 | AI | Accepted unusual content |
+| MF08 | 200 | AI | Accepted unusual content |
+| RQ01 | 400 | None | HELD |
+| RQ02 | 200 | unsure | Missing creator ID accepted |
+| RQ03 | 400 | None | HELD |
+| RQ04 | 400 | None | HELD |
+| RQ05 | 400 | None | HELD |
+| RQ06 | 400 | None | HELD |
+| RQ07 | 400 | None | HELD |
+| RQ08 | 400 | None | HELD |
+| RQ09 | 400 | None | HELD |
+| RQ10 | 400 | None | HELD |
+| RQ11 | 400 | None | HELD |
+| RQ12 | 400 | None | HELD |
+| FL01_01 | 200 | human | Allowed |
+| FL01_02 | 200 | human | Allowed |
+| FL01_03 | 200 | human | Allowed |
+| FL01_04 | 200 | human | Allowed |
+| FL01_05 | 200 | human | Allowed |
+| FL01_06 | 200 | human | Allowed |
+| FL01_07 | 200 | human | Allowed |
+| FL01_08 | 200 | human | Allowed |
+| FL01_09 | 200 | human | Allowed |
+| FL01_10 | 200 | human | Allowed |
+| FL01_11 | 429 | None | HELD |
+| FL01_12 | 429 | None | HELD |
 
-The full after-run report is saved in `results/attack_run_2026-11-09_1838_after.md`.
+### What Improved?
 
-### Did It Help, and How Do I Know?
+RQ06 and RQ07 were fixed.
 
-Yes, the input validation improvement helped.
+The application rejected invalid request structures with HTTP 400 instead of accepting them or crashing.
 
-RQ06 changed from HTTP 200 to HTTP 400.
+The after-run also produced no HTTP 500 errors.
 
-RQ07 changed from HTTP 500 to HTTP 400.
+### What Did Not Improve?
 
-These changes show that the application now rejects invalid creator IDs and JSON arrays instead of accepting them or crashing.
+False-positive behavior remained a concern.
 
-The flood test also demonstrated that rate limiting blocks excessive submissions.
+Six false-positive probes were still classified as AI.
 
-However, classification problems remained.
+Most evasion probes returned unsure.
 
-Six false-positive probes were still labeled AI, and most evasion probes were classified as unsure.
-
-The improvement made the API more reliable, but it did not solve the detector's accuracy problems.
+The changes improved API reliability but did not establish better classification accuracy.
 
 ---
 
 ## What's Still Broken
 
-The detector still has several important limitations.
+### False Positives
 
-**False positives:** Human-style writing can receive high AI scores because predictable language is not unique to AI-generated text.
+Predictable writing can receive a high AI score even when predictability does not prove AI authorship.
 
-**Evasion:** Modified AI-generated writing can receive unsure classifications.
+The detector should be evaluated on genuinely human-written samples before being used in decisions affecting writers.
 
-**Label coverage:** The selected Unit 8 evaluation inputs did not produce a human classification.
+### Evasion
 
-**Score separation:** The numerical mean-score difference still needs to be calculated.
+Modified AI-generated writing can receive unsure classifications.
 
-**Appeal auditing:** The five manual appeal responses succeeded, but their corresponding audit records still need verification.
+The current signals are sensitive to changes in writing patterns.
 
-**Input validation:** Extremely long inputs and some unusual content can still be accepted and classified.
+### Label Coverage
+
+The selected Unit 8 evaluation inputs did not produce all three classification labels.
+
+The evaluation should include additional inputs that exercise the human classification range.
+
+### Score Separation
+
+The required numerical comparison of average AI and comparison-sample scores has not been verified.
+
+### Appeal Auditing
+
+Five appeal requests succeeded, and one audit record was directly confirmed.
+
+The remaining four corresponding records should be checked.
+
+### Input Validation
+
+Some unusual content and extremely long submissions can still be accepted.
+
+The service could benefit from clearer input-length limits and stricter validation.
 
 ### What I Would Improve Next
 
-I would collect more genuine human-written examples and verified AI-generated writing.
+I would collect genuine human-written examples and verified AI-generated examples.
 
-I would use this dataset to calibrate the detector and evaluate false-positive rates.
+I would use those samples to measure false positives and calibrate the score thresholds.
 
-I would also improve the handling of unusually long submissions and malformed inputs.
+I would also improve input-length validation and audit-log verification.
 
-I stopped short of changing the model thresholds because the available evaluation results do not provide enough evidence to justify a specific calibration change.
-
-### The Trade I Would Make If This Ran for Real
+### The Trade I Would Make in Production
 
 I would rather classify uncertain writing as unsure than incorrectly accuse a human writer of using AI.
 
-This would allow some AI-generated writing to avoid confident detection, but it would reduce the risk of unfairly accusing innocent writers.
+This approach may allow some AI-generated writing to avoid confident detection, but it reduces the risk of unfair accusations.
+
+The detector should support human review rather than serve as the final authority on authorship.
 
 ---
 
@@ -725,13 +844,12 @@ This would allow some AI-generated writing to avoid confident detection, but it 
 
 - [x] Five acceptance criteria defined in `criteria.md`
 - [x] Submission endpoint implemented
-- [x] Two different scoring signals implemented
-- [x] Three label variants implemented
+- [x] Two scoring signals implemented
+- [x] Three classification labels implemented
 - [x] Appeal endpoint implemented
 - [x] Combining rule documented
-- [x] Submission and appeal sample included
+- [x] Sample submission and appeal included
 - [ ] Verify required commit count
-- [ ] Submit repository URL
 
 ### Unit 8
 
@@ -739,19 +857,26 @@ This would allow some AI-generated writing to avoid confident detection, but it 
 - [x] HTTP 429 responses observed
 - [x] Audit logging implemented
 - [x] Attack suite executed
-- [ ] Paste full before and after attack tables with manual verdicts
-- [ ] Include ten complete audit-log entries
+- [x] Confirmed before-run failures documented
+- [x] After-run outcomes summarized individually
+- [x] Ten audit-log examples included
 - [x] Three evaluation commands completed
 - [x] Evaluation weaknesses documented
-- [x] Improvement described
-- [x] Before-and-after fixes confirmed
-- [x] After-run results summarized
-- [x] Remaining limitations and production tradeoff documented
-- [ ] Verify five appeal audit entries
+- [x] Request-validation improvement implemented
+- [x] RQ06 and RQ07 fixes verified
+- [x] Remaining limitations documented
+- [x] Production tradeoff explained
+- [ ] Verify all five appeal audit entries
 - [ ] Calculate mean-score separation
 - [ ] Verify required commit count
-- [ ] Submit the same repository URL as Unit 7
+- [ ] Add full unabridged audit records if required
 
 ---
 
-**How to run this project:** [RUNNING.md](RUNNING.md)
+## Repository
+
+GitHub:
+
+https://github.com/siyanimaha/ai201-project4-provenance-guard-starter-v2026
+
+**How to run the project:** [RUNNING.md](RUNNING.md)
