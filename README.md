@@ -1206,3 +1206,21 @@ I tested the improvement using an empty audit log through temporary test data. T
 I also tested the existing audit log, and the program still correctly reported 19 rejected requests.
 
 This improvement makes the output easier to understand without changing the original counting functionality.
+
+### What It Costs
+
+My rejection summary runs locally using Python. It does not make external API calls, so the API cost for this extension is $0.
+
+In my 10 initial timing tests, the average runtime was about 1.27 milliseconds.
+
+### What's Still Broken
+
+The summary currently only runs in the terminal. It does not have a graphical interface.
+
+My existing audit log also only contained rate_limited rejections. I tested other rejection reasons using controlled test data, but I have not tested them with real requests.
+
+### How I Used AI
+
+I used ChatGPT to help me plan the extension, write Python code, create testing criteria, and troubleshoot Terminal commands.
+
+I ran the commands on my own computer, checked the actual outputs, and used those results to document my project.
