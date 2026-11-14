@@ -306,3 +306,39 @@ is evidence, and the entries you paste into your README are what unit 8 grades.
 
 **Do not delete and recreate this repository.** You submit the same URL both
 units.
+
+## Unit 9 Capstone: Rejection Summary
+
+This extension runs locally using Python.
+
+### Requirements
+- Python 3
+- Project dependencies from requirements.txt
+- Existing audit log data
+
+### How to Run
+
+1. Open Terminal.
+2. Go to the project folder.
+3. Install dependencies if needed:
+
+   python3 -m pip install -r requirements.txt
+
+4. Run the extension:
+
+   python3 rejection_summary.py
+
+### Expected Output
+
+Rejected Request Summary
+Total rejected: 19
+rate_limited: 19
+
+The numbers may change depending on the audit log.
+
+### Troubleshooting
+
+If the rejection count is zero, check whether the audit log contains rejected requests.
+
+If Python reports a missing module, install the dependencies from requirements.txt.
+
