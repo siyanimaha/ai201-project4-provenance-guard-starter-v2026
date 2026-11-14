@@ -1154,3 +1154,41 @@ Results:
 All 10 runs returned the same rejection count.
 The extension runs locally and does not make
 any external API calls, so the API cost is $0.
+
+### Milestone 5: Testing Results
+
+I tested my rejection summary extension using five criteria.
+Each criterion was tested three times.
+
+1. Correct rejection count: MET (3/3)
+2. Correct rejection reasons: MET (3/3)
+3. No rejected requests: MET (3/3)
+4. Runtime under 10 ms: MET (3/3)
+5. Consistent results: MET (3/3)
+
+All 15 trials passed.
+
+The runtime measurements were:
+- Trial 1: 3.337 ms
+- Trial 2: 1.097 ms
+- Trial 3: 1.045 ms
+
+The existing audit log contained 19 rejected requests,
+all with the reason rate_limited.
+
+### Milestone 6: Diagnosis
+
+All five criteria were met in my tests.
+
+The extension correctly counted rejected requests and
+grouped them by reason. It also handled a log with no
+rejected requests.
+
+One limitation is that my actual audit log only contained
+rate_limited rejections. I used controlled test data to
+check that different rejection reasons were counted
+correctly.
+
+For future improvement, I would like to add a way to
+display the summary in a simple interface instead of
+only showing it in the terminal.
