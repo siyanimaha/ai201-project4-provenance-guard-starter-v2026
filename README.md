@@ -1138,3 +1138,19 @@ The new rejection_summary.py file reads the existing audit logs and shows the to
 Run:
 python3 rejection_summary.py
 
+
+### Milestone 3: Run and Measure
+
+I ran my rejection summary extension 10 times using Python.
+
+Results:
+- Successful runs: 10 out of 10
+- Rejected requests found: 19
+- Rejection reason: rate_limited
+- Average execution time: 1.27 ms
+- Fastest run: 1.015 ms
+- Slowest run: 3.259 ms
+
+All 10 runs returned the same rejection count.
+The extension runs locally and does not make
+any external API calls, so the API cost is $0.
