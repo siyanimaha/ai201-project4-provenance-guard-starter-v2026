@@ -1122,3 +1122,19 @@ Stricter validation rejects malformed requests earlier, which improves reliabili
 - **RQ06:** Before the fix, an object was accepted as `creator_id` (BROKE). After the fix, the API returns HTTP 400 (HELD).
 - **MF03–MF08:** These inputs did not crash the server. Whether they should be rejected is a separate input-policy decision.
 - **PI01–PI06:** The HTTP status and classification alone do not establish whether the injected instructions succeeded.
+
+## Capstone
+
+### The Shape
+I chose Shape A to extend my Provenance Guard project. I added a feature that summarizes rejected requests from the audit logs and counts the reasons for rejection.
+
+### What's Out of Scope
+I'm not rebuilding the interface, changing the request validation, or adding another AI model. I'm keeping the extension small so I can focus on testing it.
+
+### Extension
+The new rejection_summary.py file reads the existing audit logs and shows the total number of rejected requests and the reasons.
+
+### How to Run the Extension
+Run:
+python3 rejection_summary.py
+
