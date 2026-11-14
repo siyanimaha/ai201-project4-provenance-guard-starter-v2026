@@ -8,3 +8,4 @@
 {"timestamp": "2026-11-14T21:40:22.159739+00:00", "status": "success", "total_rejected": 19, "reasons": {"rate_limited": 19}, "runtime_ms": 1.036}
 {"timestamp": "2026-11-14T21:40:22.160844+00:00", "status": "success", "total_rejected": 19, "reasons": {"rate_limited": 19}, "runtime_ms": 1.008}
 {"timestamp": "2026-11-14T21:40:22.161914+00:00", "status": "success", "total_rejected": 19, "reasons": {"rate_limited": 19}, "runtime_ms": 0.993}
+{"timestamp": "2026-11-14T21:50:05.094906+00:00", "status": "failure", "error": "Simulated audit log read failure", "runtime_ms": 0.325}

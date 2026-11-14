@@ -1250,3 +1250,20 @@ All five criteria were met across three trials each.
 The first three criteria used controlled test data.
 The last two criteria used the existing audit log.
 
+
+### Unit 9: Failure Test
+
+I tested how my extension handles a failure by simulating
+an audit log read error.
+
+The program caught the error and recorded it in
+logs/capstone_runs.jsonl.
+
+Test results:
+- Error: Simulated audit log read failure
+- Status: failure
+- Runtime: 0.325 ms
+- Original audit log: unchanged
+
+This was an intentional test to verify that failures
+are recorded instead of being silently ignored.
