@@ -25,8 +25,11 @@ if __name__ == "__main__":
     print("Rejected Request Summary")
     print("Total rejected:", summary["total_rejected"])
 
-    for reason, count in summary["reasons"].items():
-        print(f"{reason}: {count}")
+    if not summary["reasons"]:
+        print("No rejected requests found.")
+    else:
+        for reason, count in summary["reasons"].items():
+            print(f"{reason}: {count}")
 
 def run_with_logging():
     import json

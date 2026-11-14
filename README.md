@@ -1192,3 +1192,17 @@ correctly.
 For future improvement, I would like to add a way to
 display the summary in a simple interface instead of
 only showing it in the terminal.
+
+### Milestone 6: Improvement and Retest
+
+I improved the rejection summary to make the output clearer when no rejected requests are found.
+
+Before the improvement, the program only displayed "Total rejected: 0" without explaining that no rejected requests were found.
+
+After the improvement, it also displays "No rejected requests found."
+
+I tested the improvement using an empty audit log through temporary test data. The program correctly displayed the new message.
+
+I also tested the existing audit log, and the program still correctly reported 19 rejected requests.
+
+This improvement makes the output easier to understand without changing the original counting functionality.
