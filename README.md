@@ -1224,3 +1224,29 @@ My existing audit log also only contained rate_limited rejections. I tested othe
 I used ChatGPT to help me plan the extension, write Python code, create testing criteria, and troubleshoot Terminal commands.
 
 I ran the commands on my own computer, checked the actual outputs, and used those results to document my project.
+
+### Cost for 100 Runs Per Day
+
+My average runtime was 1.27 milliseconds per run.
+
+100 runs x 1.27 ms = 127 milliseconds.
+
+That equals 0.127 seconds of total processing time per day.
+
+The extension runs locally without paid API calls, so the estimated API cost for 100 runs is $0.
+
+### Unit 9: Detailed Testing Table
+
+| Criterion | Trial 1 | Trial 2 | Trial 3 | Verdict |
+|---|---|---|---|---|
+| Correct rejection count | PASS (2 rejected) | PASS (2 rejected) | PASS (2 rejected) | MET |
+| Correct rejection reasons | PASS (2 rate_limited, 1 invalid_input) | PASS (2 rate_limited, 1 invalid_input) | PASS (2 rate_limited, 1 invalid_input) | MET |
+| No rejected requests | PASS (0 rejected) | PASS (0 rejected) | PASS (0 rejected) | MET |
+| Runtime under 10 ms | 3.337 ms | 1.097 ms | 1.045 ms | MET |
+| Consistent results | 19 rejected | 19 rejected | 19 rejected | MET |
+
+All five criteria were met across three trials each.
+
+The first three criteria used controlled test data.
+The last two criteria used the existing audit log.
+
